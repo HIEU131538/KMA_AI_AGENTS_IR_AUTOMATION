@@ -1,0 +1,14 @@
+# 1. Rác của AI AGENT
+KMA_AI_AGENT/venv/
+KMA_AI_AGENT/env/
+KMA_AI_AGENT/chroma_db/
+KMA_AI_AGENT/__pycache__/
+
+# 2. Rác của Hệ Thống (Cyber Range)
+kma-cyber-range/logs/
+*.log
+
+# 3. Môi trường chung
+.env
+.vscode/
+.DS_Store

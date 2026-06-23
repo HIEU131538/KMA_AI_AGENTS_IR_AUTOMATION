@@ -1,0 +1,96 @@
+import json
+import os
+from pathlib import Path
+
+from fastapi import APIRouter, Request
+
+from app.logging_middleware import LOG_PATH
+from app.schemas import RebootServiceRequest
+
+router = APIRouter(tags=["Admin"])
+
+
+@router.get("/api/v1/admin/status")
+def admin_status(request: Request):
+    request.state.security_message = "Admin status endpoint requested"
+
+    return {
+        "status": "healthy",
+        "service": "kma-backend",
+        "db": "connected",
+        "waf": "behind-kma-waf",
+        "siem": "log-volume-enabled"
+    }
+
+
+@router.get("/api/v1/admin/system-status")
+def system_status(request: Request):
+    request.state.security_message = "System status requested by admin/SOC"
+
+    try:
+        load_avg = os.getloadavg()
+    except Exception:
+        load_avg = None
+
+    return {
+        "status": "healthy",
+        "service": "kma-backend",
+        "container_ip": "172.20.0.3",
+        "database": "kma-db:5432",
+        "waf": "kma-waf:172.20.0.2",
+        "siem": "kma-siem:172.20.0.4",
+        "ai_agent": "kma-ai-agent:172.20.0.5",
+        "cpu_load_avg": load_avg,
+        "log_path": LOG_PATH
+    }
+
+
+@router.get("/api/v1/admin/security-logs")
+def security_logs(request: Request, limit: int = 20):
+    request.state.detected_attack = "admin_log_access"
+    request.state.mitre_technique = "T1059"
+    request.state.security_message = "Security logs requested through admin API"
+
+    path = Path(LOG_PATH)
+
+    if not path.exists():
+        return {
+            "message": "No log file found",
+            "logs": []
+        }
+
+    lines = path.read_text(encoding="utf-8", errors="ignore").splitlines()
+    last_lines = lines[-limit:]
+
+    parsed_logs = []
+
+    for line in last_lines:
+        try:
+            parsed_logs.append(json.loads(line))
+        except Exception:
+            parsed_logs.append({"raw": line})
+
+    return {
+        "message": "Security logs fetched",
+        "count": len(parsed_logs),
+        "logs": parsed_logs
+    }
+
+
+@router.post("/api/v1/admin/reboot-service")
+def reboot_service(data: RebootServiceRequest, request: Request):
+    if data.command:
+        request.state.detected_attack = "ai_assisted_rce_attempt"
+        request.state.mitre_technique = "LLM02"
+        request.state.security_message = "Dangerous command field received in reboot-service request"
+    else:
+        request.state.detected_attack = "admin_service_reboot_requested"
+        request.state.security_message = "Service reboot requested"
+
+    return {
+        "message": "Service reboot simulated",
+        "service_name": data.service_name,
+        "reason": data.reason,
+        "command_received": bool(data.command),
+        "status": "simulated_only"
+    }

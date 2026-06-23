@@ -1,0 +1,89 @@
+import base64
+import json
+import os
+import time
+from datetime import datetime
+
+from fastapi import Request
+
+LOG_PATH = "/var/log/kma-app/app.log"
+
+
+def normalize_body(raw_body: bytes):
+    if not raw_body:
+        return None
+
+    max_len = 4096
+    truncated = len(raw_body) > max_len
+    body = raw_body[:max_len]
+
+    try:
+        decoded = body.decode("utf-8")
+        return {
+            "encoding": "utf-8",
+            "content": decoded,
+            "truncated": truncated
+        }
+    except UnicodeDecodeError:
+        return {
+            "encoding": "base64",
+            "content": base64.b64encode(body).decode("ascii"),
+            "truncated": truncated
+        }
+
+
+def register_logging_middleware(app):
+    @app.middleware("http")
+    async def security_logging_middleware(request: Request, call_next):
+        start_time = time.time()
+
+        raw_body = await request.body()
+        normalized_body = normalize_body(raw_body)
+
+        response = await call_next(request)
+
+        latency_ms = round((time.time() - start_time) * 1000, 2)
+
+        x_forwarded_for = request.headers.get("x-forwarded-for")
+        client_ip = (
+            x_forwarded_for.split(",")[0].strip()
+            if x_forwarded_for
+            else request.client.host if request.client else None
+        )
+
+        log_record = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "service": "kma-backend",
+            "client_ip": client_ip,
+            "request": {
+                "method": request.method,
+                "url": request.url.path,
+                "headers": {
+                    "user-agent": request.headers.get("user-agent"),
+                    "x-forwarded-for": request.headers.get("x-forwarded-for")
+                },
+                "body": normalized_body
+            },
+            "response": {
+                "status_code": response.status_code,
+                "latency_ms": latency_ms
+            },
+            "auth_context": {
+                "user_id": getattr(request.state, "user_id", None),
+                "username": getattr(request.state, "username", None),
+                "role": getattr(request.state, "role", None)
+            },
+            "security_metadata": {
+                "waf_decision": getattr(request.state, "waf_decision", "allowed"),
+                "detected_attack": getattr(request.state, "detected_attack", "none"),
+                "mitre_technique": getattr(request.state, "mitre_technique", None),
+                "message": getattr(request.state, "security_message", None)
+            }
+        }
+
+        os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+
+        with open(LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_record, ensure_ascii=False) + "\n")
+
+        return response

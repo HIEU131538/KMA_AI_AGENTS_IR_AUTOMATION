@@ -1,0 +1,103 @@
+services:
+  kma-waf:
+    image: owasp/modsecurity-crs:nginx
+    container_name: kma-waf
+    depends_on:
+      - kma-app
+    environment:
+      BACKEND: "http://kma-app:8000"
+      PORT: "8080"
+      MODSEC_RULE_ENGINE: "DetectionOnly"
+      MODSEC_AUDIT_ENGINE: "RelevantOnly"
+      MODSEC_AUDIT_LOG: "/var/log/modsecurity/audit.log"
+      MODSEC_AUDIT_LOG_FORMAT: "JSON"
+      PARANOIA: "1"
+      ANOMALY_INBOUND: "5"
+      ANOMALY_OUTBOUND: "4"
+      ALLOWED_METHODS: "GET HEAD POST OPTIONS PUT PATCH DELETE"
+    ports:
+      - "8080:8080"
+    networks:
+      kma-net:
+        ipv4_address: 172.20.0.2
+    volumes:
+      - ./logs/waf:/var/log/modsecurity
+      - ./logs/nginx:/var/log/nginx
+    restart: unless-stopped
+
+  kma-app:
+    build: ./backend
+    container_name: kma-app
+    env_file:
+      - ./backend/.env
+    depends_on:
+      - kma-db
+    environment:
+      AI_AGENT_URL: http://172.25.130.253:8000
+    ports:
+      - "8001:8000"
+    networks:
+      kma-net:
+        ipv4_address: 172.20.0.3
+    volumes:
+      - ./logs/app:/var/log/kma-app
+      - ./logs/auth:/var/log/kma-auth
+      - ./backend/.env:/app/backend/.env:ro
+      - ./logs/threat:/var/log/kma-threat
+      - ./logs/security:/var/log/kma-security
+      - ./logs/siem:/var/log/kma-siem
+    restart: unless-stopped
+
+  kma-siem:
+    build: ./siem
+    container_name: kma-siem
+    depends_on:
+      - kma-waf
+      - kma-app
+    networks:
+      kma-net:
+        ipv4_address: 172.20.0.4
+    volumes:
+      - ./logs:/logs
+    restart: unless-stopped
+
+  kma-ai-agent:
+    build: ./ai-agent
+    container_name: kma-ai-agent
+    depends_on:
+      - kma-siem
+    ports:
+      - "9000:9000"
+    networks:
+      kma-net:
+        ipv4_address: 172.20.0.5
+    volumes:
+      - ./logs:/logs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: unless-stopped
+
+  kma-db:
+    image: postgres:15
+    container_name: kma-db
+    environment:
+      POSTGRES_USER: kma
+      POSTGRES_PASSWORD: kma_password
+      POSTGRES_DB: kma_hr
+    networks:
+      kma-net:
+        ipv4_address: 172.20.0.10
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+networks:
+  kma-net:
+    name: kma-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+volumes:
+  db_data:
+

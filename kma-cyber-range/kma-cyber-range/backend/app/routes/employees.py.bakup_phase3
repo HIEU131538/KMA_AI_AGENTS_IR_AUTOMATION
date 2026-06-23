@@ -1,0 +1,124 @@
+from typing import Optional
+
+from fastapi import APIRouter, Header, Request
+
+from app.schemas import ProfileUpdateRequest
+from app.security import unsafe_get_claims
+
+router = APIRouter(tags=["Employees"])
+
+
+FAKE_EMPLOYEES = {
+    1: {
+        "id": 1,
+        "full_name": "Nguyen Van A",
+        "department": "Board",
+        "position": "Director",
+        "salary": 50000000,
+        "phone": "0900000001",
+        "email": "director@kma.local",
+        "owner_user_id": "admin"
+    },
+    2: {
+        "id": 2,
+        "full_name": "Tran Thi B",
+        "department": "HR",
+        "position": "HR Officer",
+        "salary": 20000000,
+        "phone": "0900000002",
+        "email": "employee01@kma.local",
+        "owner_user_id": "employee01"
+    }
+}
+
+
+@router.get("/api/v1/employees")
+def list_employees(request: Request):
+    request.state.security_message = "Employee list requested"
+
+    return {
+        "employees": list(FAKE_EMPLOYEES.values())
+    }
+
+
+@router.get("/api/v1/employees/me")
+def get_my_profile(request: Request, authorization: Optional[str] = Header(default=None)):
+    claims = unsafe_get_claims(authorization)
+
+    request.state.username = claims.get("sub", "employee01")
+    request.state.role = claims.get("role", "employee")
+    request.state.mitre_technique = "T1082"
+    request.state.security_message = "Current user profile requested"
+
+    return {
+        "id": 2,
+        "username": claims.get("sub", "employee01"),
+        "role": claims.get("role", "employee"),
+        "full_name": "Tran Thi B",
+        "department": "HR",
+        "salary": 20000000,
+        "phone": "0900000002"
+    }
+
+
+@router.get("/api/v1/employees/{employee_id}")
+def get_employee(employee_id: int, request: Request):
+    employee = FAKE_EMPLOYEES.get(employee_id)
+
+    if not employee:
+        return {
+            "message": "Employee not found"
+        }
+
+    # Lab note:
+    # Đây là endpoint sẽ được dùng để minh họa BOLA.
+    # Hiện tại cố tình chưa kiểm tra object-level authorization.
+    request.state.detected_attack = "bola_surface_access"
+    request.state.mitre_technique = "T1190"
+    request.state.security_message = f"Employee object accessed by ID: {employee_id}"
+
+    return employee
+
+
+@router.patch("/api/v1/employees/profile")
+def update_profile(
+    data: ProfileUpdateRequest,
+    request: Request,
+    authorization: Optional[str] = Header(default=None)
+):
+    claims = unsafe_get_claims(authorization)
+
+    updated_profile = {
+        "username": claims.get("sub", "employee01"),
+        "full_name": data.full_name or "Tran Thi B",
+        "phone": data.phone or "0900000002",
+        "department": data.department or "HR",
+        "role": data.role or claims.get("role", "employee")
+    }
+
+    if data.role == "admin":
+        request.state.detected_attack = "mass_assignment_role_escalation"
+        request.state.mitre_technique = "T1078"
+        request.state.security_message = "Mass Assignment attempt: role field modified to admin"
+    else:
+        request.state.security_message = "Profile updated"
+
+    return {
+        "message": "Profile updated",
+        "profile": updated_profile,
+        "lab_note": "This endpoint intentionally accepts role field for Mass Assignment demonstration."
+    }
+
+
+@router.get("/api/v1/departments")
+def list_departments(request: Request):
+    request.state.security_message = "Departments listed"
+
+    return {
+        "departments": [
+            {"id": 1, "name": "Board"},
+            {"id": 2, "name": "Human Resources"},
+            {"id": 3, "name": "Information Technology"},
+            {"id": 4, "name": "Security Operations"}
+        ]
+    }

@@ -1,0 +1,233 @@
+:root {
+  font-family: Arial, sans-serif;
+  background: #0f172a;
+  color: #e5e7eb;
+}
+
+body {
+  margin: 0;
+  background: #0f172a;
+}
+
+button {
+  border: none;
+  background: #2563eb;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:hover {
+  background: #1d4ed8;
+}
+
+button.danger {
+  background: #dc2626;
+}
+
+button.danger:hover {
+  background: #b91c1c;
+}
+
+input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px;
+  border-radius: 6px;
+  border: 1px solid #475569;
+  background: #020617;
+  color: #f8fafc;
+  margin: 6px 0 12px 0;
+}
+
+label {
+  font-size: 14px;
+  color: #cbd5e1;
+}
+
+code {
+  color: #93c5fd;
+}
+
+pre {
+  white-space: pre-wrap;
+  overflow-x: auto;
+  background: #020617;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px;
+  color: #86efac;
+  max-height: 420px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+}
+
+th,
+td {
+  border-bottom: 1px solid #334155;
+  text-align: left;
+  padding: 10px;
+}
+
+th {
+  color: #93c5fd;
+  font-size: 13px;
+}
+
+.app {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: stretch;
+  margin-bottom: 24px;
+  padding: 28px;
+  background: linear-gradient(135deg, #1e293b, #111827);
+  border: 1px solid #334155;
+  border-radius: 18px;
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: 42px;
+}
+
+.hero p {
+  color: #cbd5e1;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  color: #38bdf8 !important;
+  font-size: 13px;
+  letter-spacing: 1.8px;
+  font-weight: bold;
+}
+
+.status-card {
+  min-width: 280px;
+  background: #020617;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.status-card p {
+  margin: 0 0 8px 0;
+}
+
+.status-card strong {
+  display: block;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.status-card span {
+  color: #94a3b8;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.card {
+  background: #111827;
+  border: 1px solid #334155;
+  border-radius: 14px;
+  padding: 20px;
+}
+
+.card h2 {
+  margin-top: 0;
+  color: #f8fafc;
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0 12px 0;
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard div {
+  background: #020617;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.dashboard span {
+  display: block;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.dashboard strong {
+  display: block;
+  margin-top: 8px;
+  color: #f8fafc;
+}
+
+.note {
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.empty {
+  color: #94a3b8;
+  text-align: center;
+}
+
+.result {
+  min-height: 240px;
+}
+
+.mini-info {
+  background: #020617;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-top: 12px;
+}
+
+.mini-info p {
+  margin: 6px 0;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    flex-direction: column;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

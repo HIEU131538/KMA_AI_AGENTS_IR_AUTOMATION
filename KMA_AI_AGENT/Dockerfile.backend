@@ -1,0 +1,23 @@
+FROM python:3.12-slim
+
+# Cài đặt iptables và C++ Build Tools (để build chroma-hnswlib)
+RUN apt-get update && apt-get install -y \
+    iptables \
+    build-essential \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+# Nâng cấp pip lên bản mới nhất trước khi cài đặt
+RUN pip install --upgrade pip
+
+RUN pip install --default-timeout=1000 --retries=5 --no-cache-dir -r requirements.txt
+COPY . .
+
+EXPOSE 8000
+
+# Chạy FastAPI
+CMD ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

@@ -1,0 +1,89 @@
+from typing import Optional
+
+from fastapi import APIRouter, Header, Request
+
+from app.schemas import Fido2LoginRequest, Fido2RegisterRequest, LoginRequest
+from app.security import extract_token, issue_token, unsafe_get_claims
+
+router = APIRouter(tags=["Auth"])
+
+
+@router.post("/auth/login")
+def login(data: LoginRequest, request: Request):
+    role = "admin" if data.username == "admin" else "employee"
+
+    token = issue_token(data.username, role)
+
+    request.state.username = data.username
+    request.state.role = role
+    request.state.security_message = "User logged in with password-based login"
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "username": data.username,
+            "role": role
+        }
+    }
+
+
+@router.post("/auth/fido2/register")
+def fido2_register(data: Fido2RegisterRequest, request: Request):
+    request.state.security_message = "FIDO2 register endpoint called"
+
+    return {
+        "message": "FIDO2 registration challenge generated",
+        "username": data.username,
+        "challenge": "demo-register-challenge",
+        "note": "Placeholder. Real WebAuthn register/start-finish flow will be implemented later."
+    }
+
+
+@router.post("/auth/fido2/login")
+def fido2_login(data: Fido2LoginRequest, request: Request):
+    role = "admin" if data.username == "admin" else "employee"
+    token = issue_token(data.username, role)
+
+    request.state.username = data.username
+    request.state.role = role
+    request.state.security_message = "FIDO2 login simulated successfully"
+
+    return {
+        "message": "FIDO2 login successful",
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "username": data.username,
+            "role": role
+        }
+    }
+
+
+@router.get("/auth/session/validate")
+def validate_session(request: Request, authorization: Optional[str] = Header(default=None)):
+    claims = unsafe_get_claims(authorization)
+
+    request.state.username = claims.get("sub")
+    request.state.role = claims.get("role")
+    request.state.detected_attack = "jwt_unverified_validation"
+    request.state.mitre_technique = "T1550.004"
+    request.state.security_message = "JWT payload parsed without signature verification"
+
+    return {
+        "valid": True,
+        "claims": claims,
+        "warning": "Lab mode: JWT signature is not strictly verified here."
+    }
+
+
+@router.post("/auth/logout")
+def logout(request: Request, authorization: Optional[str] = Header(default=None)):
+    token = extract_token(authorization)
+
+    request.state.security_message = "Logout endpoint called"
+
+    return {
+        "message": "Logout successful",
+        "revoked_token": token[:20] + "..." if token else None
+    }

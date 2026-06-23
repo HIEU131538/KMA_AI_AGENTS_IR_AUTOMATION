@@ -1,0 +1,85 @@
+import os
+import time
+from datetime import datetime, timedelta
+from typing import Optional
+
+from dotenv import load_dotenv
+from fastapi import Header, HTTPException
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+
+load_dotenv("/app/backend/.env")
+
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev_secret")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+def hash_password(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def issue_token(username: str, role: str) -> str:
+    payload = {
+        "sub": username,
+        "role": role,
+        "jti": f"token-{username}-{int(time.time())}",
+        "exp": datetime.utcnow() + timedelta(hours=2)
+    }
+
+    return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
+
+
+def extract_token(authorization: Optional[str]) -> Optional[str]:
+    if not authorization:
+        return None
+
+    if not authorization.lower().startswith("bearer "):
+        return None
+
+    return authorization.split(" ", 1)[1].strip()
+
+
+def verify_access_token(authorization: Optional[str] = Header(default=None)) -> dict:
+    token = extract_token(authorization)
+
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+
+    try:
+        payload = jwt.decode(
+            token,
+            JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM]
+        )
+
+        return payload
+
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+def unsafe_get_claims(authorization: Optional[str]) -> dict:
+    """
+    Lab intentionally vulnerable behavior:
+    Hàm này đọc JWT payload mà không verify chữ ký.
+    Chỉ dùng cho endpoint mô phỏng JWT Forgery trong Cyber Range.
+    """
+    token = extract_token(authorization)
+
+    if not token:
+        return {
+            "sub": "anonymous",
+            "role": "guest",
+            "jti": "none"
+        }
+
+    try:
+        return jwt.get_unverified_claims(token)
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid token format")

@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+python-jose[cryptography]
+pydantic
+python-multipart
+sqlalchemy
+psycopg2-binary
+passlib==1.7.4
+bcrypt==4.0.1
+httpx
+webauthn==2.7.1
+requests

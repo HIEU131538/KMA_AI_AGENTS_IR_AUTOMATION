@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find //wsl.localhost/Ubuntu/home/hieu/KMA_AI_AGENT -type f -name \"*.py\" | head -30)",
+      "Read(///wsl.localhost/Ubuntu/home/hieu/**)"
+    ]
+  }
+}

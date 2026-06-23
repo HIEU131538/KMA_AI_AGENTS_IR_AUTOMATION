@@ -1,0 +1,70 @@
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
+
+from app.schemas import ExportPDFRequest
+from app.security import get_current_user
+
+router = APIRouter(tags=["Tools"])
+
+
+def set_auth_context(request: Request, current_user: dict):
+    request.state.user_id = current_user["id"]
+    request.state.username = current_user["username"]
+    request.state.role = current_user["role"]
+    request.state.jti = current_user.get("jti")
+
+@router.post("/api/v1/tools/export-pdf")
+def export_pdf(
+    data: ExportPDFRequest,
+    request: Request,
+    current_user: dict = Depends(get_current_user)
+):
+    set_auth_context(request, current_user)
+
+    request.state.detected_attack = "ssrf_surface_access"
+    request.state.mitre_technique = "T1190"
+    request.state.security_message = f"Export PDF called with source_url: {data.source_url}"
+
+    return {
+        "message": "PDF export job created",
+        "source_url": data.source_url,
+        "lab_note": "SSRF logic will be implemented in later backend phase."
+    }
+
+
+@router.post("/api/v1/tools/upload-cv")
+async def upload_cv(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    set_auth_context(request, current_user)
+
+    request.state.detected_attack = "rag_poisoning_surface_access"
+    request.state.mitre_technique = "T1562"
+    request.state.security_message = f"CV uploaded: {file.filename}"
+
+    return {
+        "message": "CV uploaded",
+        "filename": file.filename,
+        "content_type": file.content_type
+    }
+
+
+@router.get("/api/v1/tools/fetch-external")
+def fetch_external(
+    request: Request,
+    url: str = Query(..., description="External URL to fetch"),
+    current_user: dict = Depends(get_current_user)
+):
+    set_auth_context(request, current_user)
+
+    request.state.detected_attack = "external_fetch_requested"
+    request.state.mitre_technique = "T1048"
+    request.state.security_message = f"External fetch requested: {url}"
+
+    return {
+        "message": "External fetch request received",
+        "url": url,
+        "mode": "simulated",
+        "note": "Real outbound fetch can be enabled later in a controlled lab."
+    }

@@ -1,0 +1,943 @@
+[
+  {
+    "incident_id": "INC-001",
+    "created_at": "2026-06-17T03:35:18.485207",
+    "title": "Multi Stage Attack",
+    "severity": "critical",
+    "events": 8,
+    "attack_chain": [
+      "user_login_success",
+      "user_login_failed",
+      "privilege_escalation",
+      "employee_role_change_attempt",
+      "ssrf_metadata_request",
+      "ssrf_internal_request",
+      "mass_assignment_role_escalation",
+      "bola_attempt"
+    ]
+  },
+  {
+    "incident_id": "INC-002",
+    "created_at": "2026-06-17T06:15:17.994917",
+    "title": "Multi Stage Attack",
+    "severity": "critical",
+    "events": 10,
+    "attack_chain": [
+      "user_login_success",
+      "user_login_failed",
+      "privilege_escalation",
+      "employee_role_change_attempt",
+      "employee_view",
+      "ssrf_metadata_request",
+      "ssrf_internal_request",
+      "mass_assignment_role_escalation",
+      "bola_attempt",
+      "employee_export"
+    ],
+    "profile": "Data Theft Activity",
+    "timeline": [
+      {
+        "timestamp": "2026-06-17T07:21:36.492931+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-17T08:37:19.269569+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-17T08:37:37.479256+00:00",
+        "type": "threat",
+        "name": "ssrf_metadata_request"
+      },
+      {
+        "timestamp": "2026-06-17T08:38:12.747570+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-17T08:49:24.435060+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-17T08:52:53.591447+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-17T08:59:38.874792+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-17T09:00:35.972816+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-17T09:10:43.754299+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-17T09:13:19.366170+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-17T15:10:59.833462+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-17T15:25:37.442106+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-18T07:30:28.193692+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-18T07:31:15.855976+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-18T07:43:42.559068+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-18T08:05:08.150176+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-19T07:58:59.026416+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-19T08:05:02.066377+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-19T08:15:03.431599+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-19T08:22:48.751723+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      }
+    ]
+  },
+  {
+    "incident_id": "INC-003",
+    "created_at": "2026-06-20T06:39:53.138825",
+    "title": "Multi Stage Attack",
+    "severity": "high",
+    "events": 3,
+    "attack_chain": [
+      "user_login_success",
+      "employee_export_pdf",
+      "ssrf_internal_request"
+    ],
+    "profile": "Internal Reconnaissance",
+    "timeline": [
+      {
+        "timestamp": "2026-06-19T15:54:58.936516+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-19T16:00:53.995183+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-19T16:03:43.456283+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-19T16:26:41.557446+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:01:33.013445+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:04:46.403938+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:25.855590+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:25.855762+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:58.394919+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:58.395137+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:17:26.452212+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:17:26.452378+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:25:48.184095+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:26:51.199400+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:26:51.199575+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T06:39:50.761608+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T12:23:08.099625+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T12:43:43.552952+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:09:59.787383+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:19:06.427146+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      }
+    ]
+  },
+  {
+    "incident_id": "INC-004",
+    "created_at": "2026-06-20T13:20:05.635646",
+    "title": "Multi Stage Attack",
+    "severity": "high",
+    "events": 4,
+    "attack_chain": [
+      "user_login_success",
+      "employee_export_pdf",
+      "user_login_failed",
+      "ssrf_internal_request"
+    ],
+    "profile": "Internal Reconnaissance",
+    "timeline": [
+      {
+        "timestamp": "2026-06-19T16:03:43.456283+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-19T16:26:41.557446+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:01:33.013445+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:04:46.403938+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:25.855590+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:25.855762+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:58.394919+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:58.395137+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:17:26.452212+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:17:26.452378+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:25:48.184095+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:26:51.199400+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:26:51.199575+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T06:39:50.761608+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T12:23:08.099625+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T12:43:43.552952+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:09:59.787383+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:19:06.427146+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:19:40.766841+00:00",
+        "type": "event",
+        "name": "user_login_failed"
+      },
+      {
+        "timestamp": "2026-06-20T13:20:19.826151+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      }
+    ]
+  },
+  {
+    "incident_id": "INC-005",
+    "created_at": "2026-06-20T13:22:13.141232",
+    "title": "Multi Stage Attack",
+    "severity": "high",
+    "events": 5,
+    "attack_chain": [
+      "user_login_success",
+      "employee_export_pdf",
+      "user_login_failed",
+      "employee_view",
+      "ssrf_internal_request"
+    ],
+    "profile": "Internal Reconnaissance",
+    "timeline": [
+      {
+        "timestamp": "2026-06-20T02:01:33.013445+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:04:46.403938+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:25.855590+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:25.855762+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:58.394919+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:58.395137+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:17:26.452212+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:17:26.452378+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:25:48.184095+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:26:51.199400+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:26:51.199575+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T06:39:50.761608+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T12:23:08.099625+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T12:43:43.552952+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:09:59.787383+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:19:06.427146+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:19:40.766841+00:00",
+        "type": "event",
+        "name": "user_login_failed"
+      },
+      {
+        "timestamp": "2026-06-20T13:20:19.826151+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:21:51.352157+00:00",
+        "type": "event",
+        "name": "employee_view"
+      },
+      {
+        "timestamp": "2026-06-20T13:22:30.267580+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      }
+    ]
+  },
+  {
+    "incident_id": "INC-006",
+    "created_at": "2026-06-20T13:24:49.608694",
+    "title": "Multi Stage Attack",
+    "severity": "critical",
+    "events": 6,
+    "attack_chain": [
+      "user_login_success",
+      "employee_export_pdf",
+      "user_login_failed",
+      "employee_view",
+      "ssrf_internal_request",
+      "bola_attempt"
+    ],
+    "profile": "Internal Reconnaissance",
+    "timeline": [
+      {
+        "timestamp": "2026-06-20T02:16:25.855762+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:58.394919+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:16:58.395137+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:17:26.452212+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:17:26.452378+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T02:25:48.184095+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:26:51.199400+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:26:51.199575+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T06:39:50.761608+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T12:23:08.099625+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T12:43:43.552952+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:09:59.787383+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:19:06.427146+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:19:40.766841+00:00",
+        "type": "event",
+        "name": "user_login_failed"
+      },
+      {
+        "timestamp": "2026-06-20T13:20:19.826151+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:21:51.352157+00:00",
+        "type": "event",
+        "name": "employee_view"
+      },
+      {
+        "timestamp": "2026-06-20T13:22:30.267580+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:24:09.323766+00:00",
+        "type": "threat",
+        "name": "bola_attempt"
+      },
+      {
+        "timestamp": "2026-06-20T13:24:09.347434+00:00",
+        "type": "event",
+        "name": "employee_view"
+      },
+      {
+        "timestamp": "2026-06-20T13:27:09.998171+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      }
+    ]
+  },
+  {
+    "incident_id": "INC-007",
+    "created_at": "2026-06-20T13:35:23.465087",
+    "title": "Multi Stage Attack",
+    "severity": "critical",
+    "events": 9,
+    "attack_chain": [
+      "user_login_success",
+      "employee_export_pdf",
+      "user_login_failed",
+      "employee_view",
+      "employee_role_change_attempt",
+      "privilege_escalation",
+      "ssrf_internal_request",
+      "bola_attempt",
+      "mass_assignment_role_escalation"
+    ],
+    "profile": "Privilege Escalation Attempt",
+    "timeline": [
+      {
+        "timestamp": "2026-06-20T02:25:48.184095+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T02:26:51.199400+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T02:26:51.199575+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T06:39:50.761608+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T12:23:08.099625+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T12:43:43.552952+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:09:59.787383+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:19:06.427146+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:19:40.766841+00:00",
+        "type": "event",
+        "name": "user_login_failed"
+      },
+      {
+        "timestamp": "2026-06-20T13:20:19.826151+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:21:51.352157+00:00",
+        "type": "event",
+        "name": "employee_view"
+      },
+      {
+        "timestamp": "2026-06-20T13:22:30.267580+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:24:09.323766+00:00",
+        "type": "threat",
+        "name": "bola_attempt"
+      },
+      {
+        "timestamp": "2026-06-20T13:24:09.347434+00:00",
+        "type": "event",
+        "name": "employee_view"
+      },
+      {
+        "timestamp": "2026-06-20T13:27:09.998171+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T13:34:30.391822+00:00",
+        "type": "event",
+        "name": "employee_role_change_attempt"
+      },
+      {
+        "timestamp": "2026-06-20T13:34:30.391919+00:00",
+        "type": "event",
+        "name": "privilege_escalation"
+      },
+      {
+        "timestamp": "2026-06-20T13:34:30.391957+00:00",
+        "type": "threat",
+        "name": "mass_assignment_role_escalation"
+      },
+      {
+        "timestamp": "2026-06-20T13:35:52.263883+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T13:35:52.264007+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      }
+    ]
+  },
+  {
+    "incident_id": "INC-008",
+    "created_at": "2026-06-21T03:17:35.452847",
+    "title": "Multi Stage Attack",
+    "severity": "critical",
+    "events": 7,
+    "attack_chain": [
+      "user_login_success",
+      "employee_view",
+      "employee_export_pdf",
+      "user_login_failed",
+      "ssrf_internal_request",
+      "ssrf_metadata_request",
+      "privilege_escalation"
+    ],
+    "profile": "Internal Reconnaissance",
+    "timeline": [
+      {
+        "timestamp": "2026-06-20T14:56:27.498898+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T14:58:52.269666+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T14:59:35.488689+00:00",
+        "type": "event",
+        "name": "employee_view"
+      },
+      {
+        "timestamp": "2026-06-20T15:27:00.459317+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-20T15:28:14.303585+00:00",
+        "type": "event",
+        "name": "employee_export_pdf"
+      },
+      {
+        "timestamp": "2026-06-20T15:28:14.303821+00:00",
+        "type": "threat",
+        "name": "ssrf_internal_request"
+      },
+      {
+        "timestamp": "2026-06-20T15:28:45.489822+00:00",
+        "type": "threat",
+        "name": "ssrf_metadata_request"
+      },
+      {
+        "timestamp": "2026-06-21T02:53:10.065000+00:00",
+        "type": "event",
+        "name": "user_login_failed"
+      },
+      {
+        "timestamp": "2026-06-21T02:54:19.363963+00:00",
+        "type": "event",
+        "name": "user_login_failed"
+      },
+      {
+        "timestamp": "2026-06-21T02:56:39.504821+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T02:57:42.399124+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T03:08:52.261335+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T03:17:21.272923+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T03:51:55.457689+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T03:52:07.662400+00:00",
+        "type": "event",
+        "name": "employee_view"
+      }
+    ]
+  },
+  {
+    "incident_id": "INC-009",
+    "created_at": "2026-06-21T03:57:51.737762",
+    "title": "Multi Stage Attack",
+    "severity": "critical",
+    "events": 9,
+    "attack_chain": [
+      "user_login_success",
+      "employee_view",
+      "employee_export_pdf",
+      "user_login_failed",
+      "employee_role_change_attempt",
+      "bola_attempt",
+      "ssrf_internal_request",
+      "ssrf_metadata_request",
+      "privilege_escalation"
+    ],
+    "profile": "Internal Reconnaissance",
+    "timeline": [
+      {
+        "timestamp": "2026-06-21T02:56:39.504821+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T02:57:42.399124+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T03:08:52.261335+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T03:17:21.272923+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T03:51:55.457689+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T03:52:07.662400+00:00",
+        "type": "event",
+        "name": "employee_view"
+      },
+      {
+        "timestamp": "2026-06-21T03:57:09.422099+00:00",
+        "type": "event",
+        "name": "employee_role_change_attempt"
+      },
+      {
+        "timestamp": "2026-06-21T03:57:26.921877+00:00",
+        "type": "threat",
+        "name": "bola_attempt"
+      },
+      {
+        "timestamp": "2026-06-21T03:57:26.922822+00:00",
+        "type": "event",
+        "name": "bola_attempt"
+      },
+      {
+        "timestamp": "2026-06-21T03:58:34.612623+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T04:00:13.119034+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T04:00:22.484751+00:00",
+        "type": "threat",
+        "name": "bola_attempt"
+      },
+      {
+        "timestamp": "2026-06-21T04:00:22.484884+00:00",
+        "type": "event",
+        "name": "bola_attempt"
+      },
+      {
+        "timestamp": "2026-06-21T04:01:06.273016+00:00",
+        "type": "threat",
+        "name": "bola_attempt"
+      },
+      {
+        "timestamp": "2026-06-21T04:01:06.273182+00:00",
+        "type": "event",
+        "name": "bola_attempt"
+      },
+      {
+        "timestamp": "2026-06-21T04:01:18.451535+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T04:07:49.127784+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      },
+      {
+        "timestamp": "2026-06-21T04:08:15.842221+00:00",
+        "type": "threat",
+        "name": "bola_attempt"
+      },
+      {
+        "timestamp": "2026-06-21T04:08:15.842376+00:00",
+        "type": "event",
+        "name": "bola_attempt"
+      },
+      {
+        "timestamp": "2026-06-21T04:20:17.420896+00:00",
+        "type": "event",
+        "name": "user_login_success"
+      }
+    ]
+  }
+]

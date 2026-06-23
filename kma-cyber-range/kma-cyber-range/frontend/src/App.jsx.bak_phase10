@@ -1,0 +1,7 @@
+import Fido2Demo from "./Fido2Demo.jsx";
+
+function App() {
+  return <Fido2Demo />;
+}
+
+export default App;

@@ -1,0 +1,12 @@
+auth/login
+auth/sesion/validate
+auth/sesion/validate-lab
+auth/logout
+auth/fido2/register/start
+auth/fido2/register/finish
+auth/fido2/login/start
+auth/fido2/login/finish
+api/v1/employees
+api/v1/employees/ne
+api/v1/employees/profile
+api/v1/departments

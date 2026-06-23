@@ -1,0 +1,77 @@
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
+from app.database import Base
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    username = Column(String(100), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=True)
+
+    role = Column(String(50), default="employee", nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    employee = relationship(
+        "Employee",
+        back_populates="user",
+        uselist=False
+    )
+
+    webauthn_credentials = relationship(
+        "WebAuthnCredential",
+        back_populates="user"
+    )
+
+
+class Employee(Base):
+    __tablename__ = "employees"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    full_name = Column(String(255), nullable=False)
+    department = Column(String(100), nullable=False)
+    position = Column(String(100), nullable=True)
+
+    salary = Column(Integer, nullable=True)
+    phone = Column(String(50), nullable=True)
+    email = Column(String(255), nullable=True)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now()
+    )
+
+    user = relationship(
+        "User",
+        back_populates="employee"
+    )
+
+
+class WebAuthnCredential(Base):
+    __tablename__ = "webauthn_credentials"
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
+    credential_id = Column(String(512), unique=True, nullable=False)
+    public_key = Column(Text, nullable=False)
+    sign_count = Column(Integer, default=0)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship(
+        "User",
+        back_populates="webauthn_credentials"
+    )

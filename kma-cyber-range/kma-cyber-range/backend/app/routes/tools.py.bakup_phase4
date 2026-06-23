@@ -1,0 +1,48 @@
+from fastapi import APIRouter, File, Query, Request, UploadFile
+
+from app.schemas import ExportPDFRequest
+
+router = APIRouter(tags=["Tools"])
+
+
+@router.post("/api/v1/tools/export-pdf")
+def export_pdf(data: ExportPDFRequest, request: Request):
+    request.state.detected_attack = "ssrf_surface_access"
+    request.state.mitre_technique = "T1190"
+    request.state.security_message = f"Export PDF called with source_url: {data.source_url}"
+
+    return {
+        "message": "PDF export job created",
+        "source_url": data.source_url,
+        "lab_note": "SSRF logic will be implemented in later backend phase."
+    }
+
+
+@router.post("/api/v1/tools/upload-cv")
+async def upload_cv(request: Request, file: UploadFile = File(...)):
+    request.state.detected_attack = "rag_poisoning_surface_access"
+    request.state.mitre_technique = "T1562"
+    request.state.security_message = f"CV uploaded: {file.filename}"
+
+    return {
+        "message": "CV uploaded",
+        "filename": file.filename,
+        "content_type": file.content_type
+    }
+
+
+@router.get("/api/v1/tools/fetch-external")
+def fetch_external(
+    request: Request,
+    url: str = Query(..., description="External URL to fetch")
+):
+    request.state.detected_attack = "external_fetch_requested"
+    request.state.mitre_technique = "T1048"
+    request.state.security_message = f"External fetch requested: {url}"
+
+    return {
+        "message": "External fetch request received",
+        "url": url,
+        "mode": "simulated",
+        "note": "Real outbound fetch can be enabled later in a controlled lab."
+    }

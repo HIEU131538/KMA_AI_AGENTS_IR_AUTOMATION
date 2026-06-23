@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # --- DỊCH VỤ 1: LÕI AI BACKEND ---
+  soc-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: soc-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    # Mở cầu dao bảo mật để container chạy được lệnh iptables của hệ điều hành
+    cap_add:
+      - NET_ADMIN
+    # Gắn socket Docker của máy thật vào container để AI có quyền ra lệnh PAUSE container khác (Soft Isolation)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./config.json:/app/config.json
+      - ./:/app
+    # Khai báo định danh để container kết nối được với Ollama trên máy thật
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - soc-network
+
+  # --- DỊCH VỤ 2: GIAO DIỆN STREAMLIT ---
+  soc-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: soc-frontend
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./config.json:/app/config.json
+      - ./:/app
+    networks:
+      - soc-network
+    depends_on:
+      - soc-backend
+
+networks:
+  soc-network:
+    driver: bridge

@@ -1,0 +1,256 @@
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.orm import Session
+
+from app.database import get_db
+from app.models import Employee, User
+from app.schemas import EmployeeCreate, EmployeeUpdate
+from app.security import verify_access_token
+
+router = APIRouter(tags=["Employees"])
+
+
+def employee_to_dict(employee: Employee):
+    return {
+        "id": employee.id,
+        "user_id": employee.user_id,
+        "full_name": employee.full_name,
+        "department": employee.department,
+        "position": employee.position,
+        "salary": employee.salary,
+        "phone": employee.phone,
+        "email": employee.email,
+        "created_at": employee.created_at.isoformat() if employee.created_at else None,
+        "updated_at": employee.updated_at.isoformat() if employee.updated_at else None,
+    }
+
+
+def set_auth_context(request: Request, claims: dict):
+    request.state.username = claims.get("sub")
+    request.state.role = claims.get("role")
+    request.state.user_id = None
+
+
+def require_roles(claims: dict, allowed_roles: list[str]):
+    role = claims.get("role")
+
+    if role not in allowed_roles:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Permission denied. Required roles: {allowed_roles}"
+        )
+
+
+@router.get("/api/v1/employees")
+def list_employees(
+    request: Request,
+    db: Session = Depends(get_db),
+    claims: dict = Depends(verify_access_token)
+):
+    """
+    Admin/manager xem danh sách toàn bộ nhân sự.
+    Phase 3: CRUD bình thường.
+    Phase sau: có thể dùng log này để phát hiện enumeration/scanning.
+    """
+
+    set_auth_context(request, claims)
+    require_roles(claims, ["admin", "manager"])
+
+    employees = db.query(Employee).order_by(Employee.id.asc()).all()
+
+    request.state.security_message = "Employee list requested from PostgreSQL"
+
+    return {
+        "count": len(employees),
+        "employees": [employee_to_dict(emp) for emp in employees]
+    }
+
+
+@router.get("/api/v1/employees/me")
+def get_my_profile(
+    request: Request,
+    db: Session = Depends(get_db),
+    claims: dict = Depends(verify_access_token)
+):
+    """
+    Nhân viên xem hồ sơ cá nhân của chính mình.
+    Dựa vào username trong JWT để tìm user, sau đó lấy employee tương ứng.
+    """
+
+    set_auth_context(request, claims)
+
+    username = claims.get("sub")
+
+    user = db.query(User).filter(User.username == username).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    employee = db.query(Employee).filter(Employee.user_id == user.id).first()
+
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee profile not found")
+
+    request.state.user_id = user.id
+    request.state.security_message = "Current employee profile requested"
+
+    return employee_to_dict(employee)
+
+
+@router.get("/api/v1/employees/{employee_id}")
+def get_employee_by_id(
+    employee_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    claims: dict = Depends(verify_access_token)
+):
+    """
+    Lấy chi tiết nhân sự theo ID.
+
+    Phase 3: đọc dữ liệu thật từ PostgreSQL.
+    Phase 6: endpoint này sẽ được dùng làm BOLA surface:
+    user thường có JWT hợp lệ nhưng truy cập employee_id không thuộc về mình.
+    """
+
+    set_auth_context(request, claims)
+
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    request.state.detected_attack = "none"
+    request.state.security_message = f"Employee detail requested: employee_id={employee_id}"
+
+    return employee_to_dict(employee)
+
+
+@router.post("/api/v1/employees")
+def create_employee(
+    data: EmployeeCreate,
+    request: Request,
+    db: Session = Depends(get_db),
+    claims: dict = Depends(verify_access_token)
+):
+    """
+    Admin tạo hồ sơ nhân sự mới.
+    """
+
+    set_auth_context(request, claims)
+    require_roles(claims, ["admin"])
+
+    if data.user_id is not None:
+        user = db.query(User).filter(User.id == data.user_id).first()
+        if not user:
+            raise HTTPException(status_code=400, detail="user_id does not exist")
+
+    employee = Employee(
+        user_id=data.user_id,
+        full_name=data.full_name,
+        department=data.department,
+        position=data.position,
+        salary=data.salary,
+        phone=data.phone,
+        email=data.email
+    )
+
+    db.add(employee)
+    db.commit()
+    db.refresh(employee)
+
+    request.state.security_message = f"Employee created: employee_id={employee.id}"
+
+    return {
+        "message": "Employee created successfully",
+        "employee": employee_to_dict(employee)
+    }
+
+
+@router.patch("/api/v1/employees/{employee_id}")
+def update_employee(
+    employee_id: int,
+    data: EmployeeUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    claims: dict = Depends(verify_access_token)
+):
+    """
+    Admin cập nhật hồ sơ nhân sự.
+    """
+
+    set_auth_context(request, claims)
+    require_roles(claims, ["admin"])
+
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    update_data = data.dict(exclude_unset=True)
+
+    if "user_id" in update_data and update_data["user_id"] is not None:
+        user = db.query(User).filter(User.id == update_data["user_id"]).first()
+        if not user:
+            raise HTTPException(status_code=400, detail="user_id does not exist")
+
+    for field, value in update_data.items():
+        setattr(employee, field, value)
+
+    db.commit()
+    db.refresh(employee)
+
+    request.state.security_message = f"Employee updated: employee_id={employee_id}"
+
+    return {
+        "message": "Employee updated successfully",
+        "employee": employee_to_dict(employee)
+    }
+
+
+@router.delete("/api/v1/employees/{employee_id}")
+def delete_employee(
+    employee_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    claims: dict = Depends(verify_access_token)
+):
+    """
+    Admin xóa hồ sơ nhân sự.
+    """
+
+    set_auth_context(request, claims)
+    require_roles(claims, ["admin"])
+
+    employee = db.query(Employee).filter(Employee.id == employee_id).first()
+
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    db.delete(employee)
+    db.commit()
+
+    request.state.security_message = f"Employee deleted: employee_id={employee_id}"
+
+    return {
+        "message": "Employee deleted successfully",
+        "employee_id": employee_id
+    }
+
+
+@router.get("/api/v1/departments")
+def list_departments(request: Request):
+    """
+    Danh sách phòng ban mẫu cho hệ thống HR.
+    """
+
+    request.state.security_message = "Departments listed"
+
+    return {
+        "departments": [
+            {"id": 1, "name": "Board"},
+            {"id": 2, "name": "Human Resources"},
+            {"id": 3, "name": "Information Technology"},
+            {"id": 4, "name": "Security Operations"},
+            {"id": 5, "name": "Finance"},
+            {"id": 6, "name": "Legal"}
+        ]
+    }
