@@ -1,6 +1,7 @@
 import os
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_chroma import Chroma 
+from langchain_chroma import Chroma
+from agent.chroma_lock import chroma_lock as _chroma_lock
 
 # Cấu hình đường dẫn
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,25 +34,27 @@ class SOCRetriever:
         """
         [KIẾN TRÚC MỚI] FEDERATED SEARCH - TRUY VẤN PHÂN LUỒNG ĐỘC LẬP
         """
-        # LUỒNG 1: Ép Thủ thư mò vào đúng ngăn chứa Sigma Rule (Bốc 2 cuốn)
-        try:
-            sigma_results = self.db.similarity_search(
-                query, 
-                k=2, 
-                filter={"source_type": "admin_sigma_rule"}
-            )
-        except:
-            sigma_results = []
-            
-        # LUỒNG 2: Ép Thủ thư mò vào ngăn chứa MITRE Framework (Bốc 5 cuốn)
-        try:
-            mitre_results = self.db.similarity_search(
-                query, 
-                k=5, 
-                filter={"source_type": "mitre_framework"}
-            )
-        except:
-            mitre_results = []
+        # Serialize toàn bộ DB access — tránh concurrent PersistentClient → Rust panic
+        with _chroma_lock:
+            # LUỒNG 1: Ép Thủ thư mò vào đúng ngăn chứa Sigma Rule (Bốc 2 cuốn)
+            try:
+                sigma_results = self.db.similarity_search(
+                    query,
+                    k=2,
+                    filter={"source_type": "admin_sigma_rule"}
+                )
+            except:
+                sigma_results = []
+
+            # LUỒNG 2: Ép Thủ thư mò vào ngăn chứa MITRE Framework (Bốc 5 cuốn)
+            try:
+                mitre_results = self.db.similarity_search(
+                    query,
+                    k=5,
+                    filter={"source_type": "mitre_framework"}
+                )
+            except:
+                mitre_results = []
 
         # BƯỚC 3: Gộp hai luồng lại thành 1 mảng chung
         raw_results = sigma_results + mitre_results

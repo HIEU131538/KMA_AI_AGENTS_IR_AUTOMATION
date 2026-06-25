@@ -1,7 +1,8 @@
 from agent.state import SOCAgentState
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+import ast
 import os
 
 # ==========================================
@@ -16,14 +17,43 @@ class AnalyzerOutput(BaseModel):
     is_suspicious: bool = Field(description="True nếu có dấu hiệu khả nghi (như tần suất lạ) cần đưa vào diện Monitor.")
     reasoning: str = Field(description="Giải thích tư duy ngắn gọn bằng tiếng Việt.")
 
+    @field_validator("mitre_mapping", mode="before")
+    @classmethod
+    def coerce_mitre_list(cls, v):
+        if isinstance(v, list):
+            return v
+        if isinstance(v, str):
+            v = v.strip()
+            if not v or v == "[]":
+                return []
+            try:
+                parsed = ast.literal_eval(v)
+                return parsed if isinstance(parsed, list) else [str(parsed)]
+            except Exception:
+                return [v] if v else []
+        return []
+
+def _get_windows_host_ip() -> str:
+    import subprocess
+    try:
+        out = subprocess.check_output(["ip", "route", "show", "default"], text=True, stderr=subprocess.DEVNULL)
+        parts = out.split()
+        return parts[parts.index("via") + 1]
+    except Exception:
+        pass
+    return "127.0.0.1"
+
+# langchain_ollama 0.1.x đọc OLLAMA_HOST (base_url param bị bỏ qua)
+if not os.getenv("OLLAMA_HOST"):
+    os.environ["OLLAMA_HOST"] = f"http://{_get_windows_host_ip()}:11434"
+
 print("[*] Đang kết nối với Bộ não Llama 3.1 (Ollama)...")
 try:
-    ollama_url = os.getenv("OLLAMA_BASE_URL")
+    ollama_url = os.environ["OLLAMA_HOST"]
     print(f"[*] Đang gọi Ollama tại: {ollama_url}")
     llm = ChatOllama(
-        base_url=ollama_url,
-        model="llama3.1", 
-        temperature=0.0, 
+        model="llama3.1",
+        temperature=0.0,
         request_timeout=120
     )
     structured_llm = llm.with_structured_output(AnalyzerOutput)

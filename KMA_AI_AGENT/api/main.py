@@ -6,6 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any
 from typing import Optional
+from dotenv import load_dotenv
+load_dotenv()  # Load .env TRƯỚC KHI import graph để OLLAMA_BASE_URL sẵn sàng
 
 # ==========================================
 # CẤU HÌNH LOGGING
@@ -13,11 +15,23 @@ from typing import Optional
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+# Ngăn ChromaMonitor thread và FastAPI thread pool chạy analyze_log đồng thời
+# → tránh SQLite deadlock khi 2 PersistentClient mở cùng lúc
+_analysis_lock = threading.Lock()
+
 # ==========================================
-# IMPORT GRAPH 
+# IMPORT GRAPH
 # ==========================================
 from core.graph import soc_app as langgraph_app
 from agent.nodes.extractor import node_extractor  # Pre-filter tier 1
+from agent.nodes.retriever import retriever_instance  # dùng chung PersistentClient
+from agent.chroma_lock import chroma_lock as _chroma_lock  # serialize mọi ChromaDB op
+from agent.nodes.responder import (
+    execute_network_block_full as _exec_block_full,
+    execute_block_ip as _exec_block_ip,
+    execute_alert_telegram as _exec_alert,
+    get_soar_mode as _get_soar_mode,
+)
 
 
 # ==========================================
@@ -49,25 +63,16 @@ _KNOWN_DOC_IDS: set = set()            # track IDs đã biết
 _TRUSTED_SOURCE_TYPES = {"admin_sigma_rule", "mitre_framework"}
 
 def _chroma_monitor_loop():
-    """Background thread: phát hiện document lạ inject vào ChromaDB."""
-    import os
-    from langchain_chroma import Chroma
-    from langchain_huggingface import HuggingFaceEmbeddings
+    """Background thread: phát hiện document lạ inject vào ChromaDB.
+    Dùng retriever_instance.db (PersistentClient duy nhất) + _chroma_lock để serialize.
+    """
+    db = retriever_instance.db
+    logger.info("[ChromaMonitor] Khởi động thành công.")
 
-    # Khởi tạo kết nối — dùng cùng path với Retriever
+    # Baseline: chỉ fetch IDs — tránh load toàn bộ collection
     try:
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        chroma_path = os.path.abspath(os.path.join(current_dir, "../chroma_db"))
-        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-        db = Chroma(persist_directory=chroma_path, embedding_function=embeddings)
-        logger.info("[ChromaMonitor] Khởi động thành công.")
-    except Exception as e:
-        logger.error(f"[ChromaMonitor] Không thể khởi tạo: {e}")
-        return
-
-    # Lần đầu: ghi nhớ toàn bộ IDs hiện có là "sạch"
-    try:
-        all_existing = db.get()
+        with _chroma_lock:
+            all_existing = db.get(include=[])
         for doc_id in all_existing.get("ids", []):
             _KNOWN_DOC_IDS.add(doc_id)
         logger.info(f"[ChromaMonitor] Baseline: {len(_KNOWN_DOC_IDS)} documents tin cậy.")
@@ -77,18 +82,23 @@ def _chroma_monitor_loop():
     while True:
         time.sleep(_CHROMA_MONITOR_INTERVAL)
         try:
-            current = db.get(include=["metadatas"])
-            current_ids      = set(current.get("ids", []))
-            current_metas    = {
+            # Bước 1: fetch IDs (nhanh) trong lock
+            with _chroma_lock:
+                id_result   = db.get(include=[])
+                current_ids = set(id_result.get("ids", []))
+                new_ids     = current_ids - _KNOWN_DOC_IDS
+                if not new_ids:
+                    continue
+                # Bước 2: fetch metadata chỉ của doc mới — vẫn trong cùng lock
+                meta_result   = db.get(ids=list(new_ids), include=["metadatas"])
+
+            current_metas = {
                 did: meta
                 for did, meta in zip(
-                    current.get("ids", []),
-                    current.get("metadatas", [{}] * len(current.get("ids", [])))
+                    meta_result.get("ids", []),
+                    meta_result.get("metadatas", [{}] * len(meta_result.get("ids", [])))
                 )
             }
-            new_ids = current_ids - _KNOWN_DOC_IDS
-            if not new_ids:
-                continue
 
             # Có document mới — kiểm tra xem có đáng ngờ không
             suspicious_new = []
@@ -105,7 +115,8 @@ def _chroma_monitor_loop():
                 if suspicious:
                     suspicious_new.append({"id": did, "source_type": src,
                                            "injected_by": inj, "document_type": dtype,
-                                           "trust_score": meta.get("trust_score", 0)})
+                                           "trust_score": meta.get("trust_score", 0),
+                                           "source_ip": meta.get("source_ip", "N/A")})
                 _KNOWN_DOC_IDS.add(did)  # đánh dấu đã biết dù suspicious
 
             if suspicious_new:
@@ -115,7 +126,7 @@ def _chroma_monitor_loop():
                 # Tạo synthetic security event → đẩy vào pipeline
                 synthetic_log = {
                     "timestamp":  time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                    "source_ip":  "127.0.0.1",
+                    "source_ip":  suspicious_new[0].get("source_ip", "N/A"),
                     "event_type": "rag_integrity_violation",
                     "message":    (
                         f"ChromaDB RAG Poisoning detected: {len(suspicious_new)} "
@@ -157,6 +168,11 @@ MAX_RECENT_RESULTS = 50
 # IP ACTIVITY LOG: track mọi IP xuất hiện (kể cả noise/clean-filtered)
 # Đảm bảo IP đã từng thấy trong batch không bị clean-filter lần 2 → luôn vào LLM
 IP_ACTIVITY_LOG: Dict[str, int] = {}
+
+# IP ESCALATION: đếm số lần HIGH/CRITICAL mỗi IP → tự động leo thang CRITICAL sau ngưỡng
+_IP_HIGH_COUNT: Dict[str, int] = {}
+_IP_ESCALATION_THRESHOLD = 5  # sau 5 HIGH từ cùng IP → force CRITICAL + NETWORK_BLOCK_FULL
+_SOAR_EXECUTED_IPS: set = set()  # tránh gọi iptables/Telegram nhiều lần cho cùng 1 IP
 
 # ==========================================
 # MODEL DỮ LIỆU
@@ -239,6 +255,8 @@ def reset_memory():
     GLOBAL_TIMELINE_MEMORY.clear()
     RECENT_ANALYSIS_RESULTS.clear()
     IP_ACTIVITY_LOG.clear()
+    _IP_HIGH_COUNT.clear()
+    _SOAR_EXECUTED_IPS.clear()
     GLOBAL_INCIDENT_STATS = {
         "total_incidents": 0,
         "total_received": 0,
@@ -260,7 +278,14 @@ def reset_memory():
 def analyze_log(payload: LogInput):
     global GLOBAL_TIMELINE_MEMORY
     global GLOBAL_INCIDENT_STATS
-    
+
+    with _analysis_lock:
+        return _analyze_log_impl(payload)
+
+def _analyze_log_impl(payload: LogInput):
+    global GLOBAL_TIMELINE_MEMORY
+    global GLOBAL_INCIDENT_STATS
+
     start_time = time.time()
     logger.info(f"Đang xử lý log mới: {payload.raw_log}")
 
@@ -288,6 +313,7 @@ def analyze_log(payload: LogInput):
         # Đây là rule xác định hoàn toàn — không cần LLM phán quyết.
         _raw_event_type = str(payload.raw_log.get("event_type", "")).lower()
         _critical_override_applied = False
+        _current_ip = ""   # initialized here — assigned inside auth_success block if triggered
         if _raw_event_type in ("auth_success", "login_success"):
             _current_ip = final_state.get("source_ip", "") or payload.raw_log.get("source_ip", "")
             if _current_ip and _current_ip != "unknown_ip":
@@ -328,13 +354,66 @@ def analyze_log(payload: LogInput):
             final_state["raw_ai_verdict"] = _mutable_ai
         # ─────────────────────────────────────────────────────────────────────
 
-        # Khi override kích hoạt, Responder đã chạy với severity cũ (LOW→IGNORE).
-        # Tính lại action theo severity và evidence mới để trả về đúng.
+        # ── IP THRESHOLD ESCALATION ─────────────────────────────────────────────
+        # Sau N log HIGH/CRITICAL từ cùng IP → force CRITICAL, không cần LLM phán lại
+        _escalation_ip = (
+            final_state.get("source_ip", "") or payload.raw_log.get("source_ip", "")
+        )
+        if _escalation_ip and _escalation_ip not in ("", "unknown_ip", "127.0.0.1"):
+            if severity_result in ("high", "critical"):
+                _IP_HIGH_COUNT[_escalation_ip] = _IP_HIGH_COUNT.get(_escalation_ip, 0) + 1
+            _ip_count = _IP_HIGH_COUNT.get(_escalation_ip, 0)
+            if _ip_count >= _IP_ESCALATION_THRESHOLD and severity_result == "high":
+                logger.info(
+                    f"[IP ESCALATION] {_escalation_ip}: {_ip_count}/{_IP_ESCALATION_THRESHOLD} "
+                    f"HIGH → force CRITICAL + NETWORK_BLOCK_FULL"
+                )
+                severity_result = "critical"
+                evidence_result = max(evidence_result, 0.92)
+                if not _critical_override_applied:
+                    _critical_override_applied = True
+                    _esc_ai = dict(final_state.get("raw_ai_verdict", {}))
+                    _esc_ai["reasoning"] = (
+                        f"[IP Escalation — Deterministic] IP {_escalation_ip} đã kích hoạt "
+                        f"{_ip_count} cảnh báo HIGH/CRITICAL liên tiếp (ngưỡng: {_IP_ESCALATION_THRESHOLD}). "
+                        f"Hệ thống tự động leo thang lên CRITICAL và cô lập mạng đầy đủ "
+                        f"(INPUT + OUTPUT + FORWARD) theo chính sách tích lũy mối đe dọa."
+                    )
+                    final_state = dict(final_state)
+                    final_state["raw_ai_verdict"] = _esc_ai
+        # ─────────────────────────────────────────────────────────────────────
+
+        # Khi override kích hoạt, Responder đã chạy với severity cũ → SOAR chưa được thực thi đúng.
+        # Tính lại action VÀ thực thi SOAR ngay tại đây với severity CRITICAL đã xác nhận.
         if _critical_override_applied:
+            _ov_ip   = _escalation_ip or _current_ip  # IP từ escalation hoặc auth_success
+            _ov_mode = _get_soar_mode()
             if evidence_result >= 0.90:
                 _action_result = "NETWORK_BLOCK_FULL"
+                # Chỉ thực thi iptables + Telegram 1 lần mỗi IP
+                # Các log tiếp theo từ cùng IP vẫn được đánh CRITICAL nhưng không re-block
+                if _ov_ip and _ov_ip not in _SOAR_EXECUTED_IPS:
+                    _SOAR_EXECUTED_IPS.add(_ov_ip)
+                    _block_res = _exec_block_full(_ov_ip, _ov_mode)
+                    _tele_res  = _exec_alert(
+                        f"🚨 [CRITICAL — IP Escalation] IP {_ov_ip} kích hoạt "
+                        f"{_IP_HIGH_COUNT.get(_ov_ip, 0)} cảnh báo HIGH/CRITICAL liên tiếp. "
+                        f"Hệ thống tự động leo thang CRITICAL + NETWORK_BLOCK_FULL (INPUT+OUTPUT+FORWARD).",
+                        _ov_mode
+                    )
+                    logger.info(f"[ACTION OVERRIDE EXEC] {_block_res}")
+                    logger.info(f"[ACTION OVERRIDE EXEC] Telegram: {_tele_res}")
             elif evidence_result >= 0.70:
                 _action_result = "BLOCK_IP"
+                if _ov_ip and _ov_ip not in _SOAR_EXECUTED_IPS:
+                    _SOAR_EXECUTED_IPS.add(_ov_ip)
+                    _block_res = _exec_block_ip(_ov_ip, _ov_mode)
+                    _tele_res  = _exec_alert(
+                        f"🔥 [CRITICAL — Kill-chain confirmed] Đã tự động Block IP: {_ov_ip}",
+                        _ov_mode
+                    )
+                    logger.info(f"[ACTION OVERRIDE EXEC] {_block_res}")
+                    logger.info(f"[ACTION OVERRIDE EXEC] Telegram: {_tele_res}")
             else:
                 _action_result = "ALERT_OPERATOR"
             logger.info(f"[ACTION OVERRIDE] CRITICAL kill-chain confirmed → {_action_result}")
@@ -378,7 +457,9 @@ def analyze_log(payload: LogInput):
         logger.info(f"Phân tích xong trong {process_time}ms. Severity: {severity_result.upper()}")
 
         _notes = list(final_state.get("investigation_notes", []))
-        if _critical_override_applied:
+        if _critical_override_applied and _current_ip:
+            # Note này chỉ dành cho auth_success override (có _current_ip)
+            # IP escalation override tự set reasoning riêng trong _esc_ai
             _notes.append(
                 f"[CRITICAL OVERRIDE] LLM trả {final_state.get('severity','?').upper()} "
                 f"(reasoning: '{final_state.get('raw_ai_verdict',{}).get('reasoning','?')[:80]}...') "
@@ -564,3 +645,35 @@ def analyze_batch(payload: BatchLogInput):
         "final_timeline_size": len(GLOBAL_TIMELINE_MEMORY),
         "results": results
     }
+
+
+# ==========================================
+# INTERNAL: RAG POISON INJECTION
+# phase3.py gọi endpoint này thay vì mở PersistentClient trực tiếp.
+# Chạy trong cùng process → tránh chromadb 0.5.x Rust panic do multi-process SQLite.
+# ==========================================
+class RAGPoisonPayload(BaseModel):
+    doc_id: str
+    document: str
+    metadata: dict
+
+@app.post("/internal/inject-rag-poison")
+def inject_rag_poison(payload: RAGPoisonPayload):
+    # Dùng retriever_instance.db — PersistentClient duy nhất, không tạo thêm client mới
+    # _chroma_lock serialize với mọi thao tác ChromaDB khác trong process
+    try:
+        with _chroma_lock:
+            try:
+                retriever_instance.db.delete([payload.doc_id])
+            except Exception:
+                pass
+            retriever_instance.db.add_texts(
+                texts=[payload.document],
+                metadatas=[payload.metadata],
+                ids=[payload.doc_id]
+            )
+        logger.info(f"[RAGPoison] Document injected: {payload.doc_id}")
+        return {"status": "success", "doc_id": payload.doc_id}
+    except Exception as e:
+        logger.error(f"[RAGPoison] Inject failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

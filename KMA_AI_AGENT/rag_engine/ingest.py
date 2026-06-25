@@ -159,6 +159,11 @@ def run_ingestion():
     
     # Bơm cả list ID vào ChromaDB
     chunk_ids = [chunk.metadata["chunk_id"] for chunk in chunks]
+    for chunk in chunks: # Lưu ý: Nếu biến chứa dữ liệu của cậu tên là 'docs' hoặc 'splits', hãy thay chữ 'chunks' nhé
+        for key, value in chunk.metadata.items():
+            if isinstance(value, list):
+            # Ép kiểu danh sách thành một chuỗi liên tục
+                chunk.metadata[key] = ", ".join([str(v) for v in value])
     vector_db = Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,

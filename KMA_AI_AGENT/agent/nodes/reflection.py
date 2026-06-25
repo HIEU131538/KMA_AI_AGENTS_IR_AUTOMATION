@@ -13,11 +13,23 @@ class ReflectionOutput(BaseModel):
     adjusted_confidence: float = Field(description="Điểm tự tin MỚI (0.0 - 1.0). Lưu ý: Kiểm toán viên chỉ nên hạ điểm nếu có rủi ro.")
     reflection_notes: str = Field(description="Dòng tư duy phản biện: Giải thích tại sao có hoặc không có mâu thuẫn.")
 
+def _get_windows_host_ip() -> str:
+    import subprocess
+    try:
+        out = subprocess.check_output(["ip", "route", "show", "default"], text=True, stderr=subprocess.DEVNULL)
+        parts = out.split()
+        return parts[parts.index("via") + 1]
+    except Exception:
+        pass
+    return "127.0.0.1"
+
+# langchain_ollama 0.1.x đọc OLLAMA_HOST (base_url param bị bỏ qua)
+if not os.getenv("OLLAMA_HOST"):
+    os.environ["OLLAMA_HOST"] = f"http://{_get_windows_host_ip()}:11434"
+
 print("[*] Khởi động Trạm Kiểm Toán Nội Bộ (Reflection)...")
 try:
-    ollama_url = os.getenv("OLLAMA_BASE_URL")
     llm = ChatOllama(
-        base_url=ollama_url,
         model="llama3.1",
         temperature=0.0,
         request_timeout=120

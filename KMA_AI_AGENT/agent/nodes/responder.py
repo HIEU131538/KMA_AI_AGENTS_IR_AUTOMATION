@@ -12,19 +12,24 @@ ALLOW_LIVE_MODE = os.getenv("ALLOW_LIVE_MODE", "true").lower() == "true"
 from dotenv import load_dotenv
 load_dotenv()
 
+_DASHBOARD_CONFIG = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)),
+    "..", "..", "dashboard", "config.json"
+)
+
 def get_soar_mode() -> str:
     """Đọc file config 1 lần duy nhất để lấy công tắc LIVE/SIMULATION"""
     try:
-        with open("config.json", "r") as f:
+        with open(_DASHBOARD_CONFIG, "r") as f:
             config = json.load(f)
             requested_mode = config.get("SOAR_MODE", "SIMULATION").upper()
-            
+
             if requested_mode == "LIVE" and not ALLOW_LIVE_MODE:
                 print("⚠️ [WARNING] Giao diện yêu cầu LIVE, nhưng ALLOW_LIVE_MODE đang tắt! Ép về SIMULATION.")
                 return "SIMULATION"
-                
+
             return requested_mode
-    except FileNotFoundError:
+    except (FileNotFoundError, json.JSONDecodeError, ValueError):
         return "SIMULATION"
 
 def is_valid_ip(ip: str) -> bool:
@@ -35,57 +40,59 @@ def is_valid_ip(ip: str) -> bool:
     except ValueError:
         return False
 
+# IP nội bộ / loopback — không bao giờ block bằng iptables
+_PROTECTED_IPS = {"127.0.0.1", "::1", "0.0.0.0", "localhost"}
+
 # ==========================================
 # CÁC HÀM THỰC CHIẾN SOAR (ACTION PLAYBOOKS)
 # ==========================================
 
+_IPT = ["sudo", "/usr/sbin/iptables"]
+
 def execute_block_ip(ip_address: str, mode: str) -> str:
+    if ip_address in _PROTECTED_IPS:
+        return f"[PROTECTED] {ip_address} là địa chỉ nội bộ — bỏ qua block để bảo vệ hệ thống."
     if mode == "SIMULATION":
         return f"[SIMULATION] Đã giả lập chặn IP {ip_address}."
     try:
-        check_cmd = ["iptables", "-C", "INPUT", "-s", ip_address, "-j", "DROP"]
-        add_cmd = ["iptables", "-A", "INPUT", "-s", ip_address, "-j", "DROP"]
-        
-        try:
-            subprocess.run(check_cmd, capture_output=True, check=True)
-            return f"[*] THỰC CHIẾN (LIVE): IP {ip_address} đã bị Block từ trước, bỏ qua."
-        except subprocess.CalledProcessError:
-            subprocess.run(add_cmd, capture_output=True, text=True, check=True)
-            return f"[+] THỰC CHIẾN (LIVE): Đã đưa IP {ip_address} vào Blacklist của iptables."
+        # Dùng -I 1 (insert đầu chain) thay vì -A (append cuối)
+        # → DROP có priority cao nhất, đè lên mọi throttle rule đã có trước
+        add_cmd = _IPT + ["-I", "INPUT", "1", "-s", ip_address, "-j", "DROP"]
+        subprocess.run(add_cmd, capture_output=True, text=True, check=True)
+        return f"[+] THỰC CHIẾN (LIVE): Đã chặn IP {ip_address} (DROP inserted tại vị trí #1 INPUT)."
     except Exception as e:
         return f"[-] LỖI BLOCK IP: {str(e)}"
 
 def execute_network_block_full(ip_address: str, mode: str) -> str:
     """Cô lập hoàn toàn một IP ở cấp độ mạng — chặn cả INPUT, OUTPUT, FORWARD.
-    Đây là mức cao nhất, tương đương network-level isolation không cần Docker."""
+    Dùng -I 1 để DROP rule nằm đầu chain, đè lên throttle rule đã có."""
+    if ip_address in _PROTECTED_IPS:
+        return f"[PROTECTED] {ip_address} là địa chỉ nội bộ — bỏ qua Network Block Full để bảo vệ hệ thống."
     if mode == "SIMULATION":
         return f"[SIMULATION] Đã giả lập Network Block Full (INPUT+OUTPUT+FORWARD) cho IP {ip_address}."
     results = []
     for chain, flag in [("INPUT", "-s"), ("OUTPUT", "-d"), ("FORWARD", "-s")]:
         try:
-            check = ["iptables", "-C", chain, flag, ip_address, "-j", "DROP"]
-            add   = ["iptables", "-A", chain, flag, ip_address, "-j", "DROP"]
-            try:
-                subprocess.run(check, capture_output=True, check=True)
-                results.append(f"{chain}: rule đã tồn tại.")
-            except subprocess.CalledProcessError:
-                subprocess.run(add, capture_output=True, check=True)
-                results.append(f"{chain}: DROP rule đã thêm.")
+            add = _IPT + ["-I", chain, "1", flag, ip_address, "-j", "DROP"]
+            subprocess.run(add, capture_output=True, check=True)
+            results.append(f"{chain}: DROP inserted #1.")
         except Exception as e:
             results.append(f"{chain}: LỖI — {e}")
     return f"[+] NETWORK_BLOCK_FULL (LIVE) IP {ip_address}: {' | '.join(results)}"
 
 def execute_throttle_ip(ip_address: str, mode: str, rate_limit: str = "5/m") -> str:
+    if ip_address in _PROTECTED_IPS:
+        return f"[PROTECTED] {ip_address} là địa chỉ nội bộ — bỏ qua throttle để bảo vệ hệ thống."
     if mode == "SIMULATION":
         return f"[SIMULATION] Mô phỏng: Đã giả lập bóp băng thông IP {ip_address} xuống {rate_limit}."
     try:
-        check_limit = ["iptables", "-C", "INPUT", "-s", ip_address, "-m", "limit", "--limit", rate_limit, "-j", "ACCEPT"]
+        check_limit = _IPT + ["-C", "INPUT", "-s", ip_address, "-m", "limit", "--limit", rate_limit, "-j", "ACCEPT"]
         try:
             subprocess.run(check_limit, capture_output=True, check=True)
             return f"[*] THROTTLE (LIVE): IP {ip_address} đã bị bóp băng thông từ trước."
         except subprocess.CalledProcessError:
-            subprocess.run(["iptables", "-A", "INPUT", "-s", ip_address, "-m", "limit", "--limit", rate_limit, "-j", "ACCEPT"], check=True)
-            subprocess.run(["iptables", "-A", "INPUT", "-s", ip_address, "-j", "DROP"], check=True)
+            subprocess.run(_IPT + ["-A", "INPUT", "-s", ip_address, "-m", "limit", "--limit", rate_limit, "-j", "ACCEPT"], check=True)
+            subprocess.run(_IPT + ["-A", "INPUT", "-s", ip_address, "-j", "DROP"], check=True)
             return f"[~] THROTTLE (LIVE): Đã bóp băng thông IP {ip_address} xuống mức {rate_limit}."
     except Exception as e:
         return f"[-] LỖI THROTTLE IP {ip_address}: {str(e)}"
@@ -141,6 +148,9 @@ def node_responder(state: SOCAgentState):
     knowledge_conflict = state.get("knowledge_conflict", False)
     is_suspicious = state.get("is_suspicious", False)
     
+    notes = []
+    notes.append(f"Responder: Chế độ SOAR hiện tại là {current_mode}.")
+
     # BẢO MẬT: Validate IP trước khi xử lý
     source_ip = state.get("extracted_ioc", {}).get("source_ip", "")
     if not source_ip or not is_valid_ip(source_ip):
@@ -151,12 +161,16 @@ def node_responder(state: SOCAgentState):
             source_ip = temp_ip if is_valid_ip(temp_ip) else "Unknown_IP"
         else:
             source_ip = "Unknown_IP"
-            
+
     if source_ip == "Unknown_IP":
         print("⚠️ CẢNH BÁO: Không thể xác thực được Source IP (Có thể là tấn công chèn mã hoặc Log hỏng).")
-    
-    notes = []
-    notes.append(f"Responder: Chế độ SOAR hiện tại là {current_mode}.")
+        notes.append("Responder [CẢNH BÁO ĐỎ]: Source IP không hợp lệ — khả năng Log Injection/Tampering. Bắn cảnh báo khẩn.")
+        notes.append(execute_alert_telegram(
+            f"🚨 [LOG TAMPERING ALERT] Source IP không hợp lệ trong log!\n"
+            f"Severity: {severity.upper()} | Incident payload có thể bị giả mạo.\n"
+            f"Cần SOC Analyst điều tra ngay lập tức.",
+            current_mode
+        ))
     
     action = "ignore" 
     reason = "Không có mối đe dọa."

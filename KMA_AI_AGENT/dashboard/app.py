@@ -328,8 +328,13 @@ def render_verdict(result: dict):
         m1.metric("Evidence Strength", f"{result.get('evidence_strength', 0.0):.2f}")
         m2.metric("Confidence",        f"{result.get('confidence', 0.0):.2f}")
 
-        # Reasoning
-        reasoning = result.get("raw_ai_verdict", {}).get("reasoning", "—")
+        # Reasoning — fallback to thought_process when Llama echoes Field description
+        _raw_v = result.get("raw_ai_verdict", {})
+        reasoning = _raw_v.get("reasoning", "")
+        _BAD = ("Giải thích tư duy", "Phân tích RAG và đối chiếu log")
+        if not reasoning or len(reasoning) < 10 or any(s in reasoning for s in _BAD):
+            reasoning = _raw_v.get("thought_process", "")
+        reasoning = reasoning or "—"
         st.info(f"**Reasoning:** {reasoning}")
 
         # MITRE tags
@@ -814,8 +819,13 @@ with tab_batch:
                         continue
 
                     sev_val    = r.get("severity", "LOW")
-                    # Full reasoning — no truncation; was [:60] which caused visible cutoff
-                    ev_type    = r.get("raw_ai_verdict", {}).get("reasoning", "") or "—"
+                    # Full reasoning — fallback to thought_process when Llama echoes Field description
+                    _raw_v_b   = r.get("raw_ai_verdict", {})
+                    _r_text    = _raw_v_b.get("reasoning", "")
+                    _BAD = ("Giải thích tư duy", "Phân tích RAG và đối chiếu log")
+                    if not _r_text or len(_r_text) < 10 or any(s in _r_text for s in _BAD):
+                        _r_text = _raw_v_b.get("thought_process", "")
+                    ev_type    = _r_text or "—"
                     inc        = r.get("incident_id", "N/A")
                     ev_str     = r.get("evidence_strength", 0.0)
                     action_val = r.get("action_taken", "NONE")
@@ -944,10 +954,14 @@ with tab_live:
             sec_label(f"Final Attack Chain · {len(live_timeline)} tổng events · {len(_lf_attack_evs)} attack events được xác nhận")
             render_timeline(live_timeline)
     else:
-        lf_sev = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0}
-        for _r in lf_results:
-            _s = str(_r.get("severity", "LOW")).upper()
-            lf_sev[_s] = lf_sev.get(_s, 0) + 1
+        # Dùng GLOBAL_INCIDENT_STATS (cùng nguồn với RADAR) thay vì đếm từ RECENT buffer
+        # → đảm bảo count cards luôn nhất quán với Radar Overview
+        lf_sev = {
+            "CRITICAL": inc_data.get("critical", 0),
+            "HIGH":     inc_data.get("high", 0),
+            "MEDIUM":   inc_data.get("medium", 0),
+            "LOW":      inc_data.get("low", 0),
+        }
 
         if _pending > 0:
             st.info(f"🔄 **{_pending}** log đang được LLM phân tích... Bấm ⟳ Refresh sau vài giây.")
@@ -1026,7 +1040,12 @@ with tab_live:
                     unsafe_allow_html=True,
                 )
 
-                _reasoning = _r.get("raw_ai_verdict", {}).get("reasoning", "—")
+                _raw_verdict = _r.get("raw_ai_verdict", {})
+                _reasoning = _raw_verdict.get("reasoning", "")
+                _BAD = ("Giải thích tư duy", "Phân tích RAG và đối chiếu log")
+                if not _reasoning or len(_reasoning) < 10 or any(s in _reasoning for s in _BAD):
+                    _reasoning = _raw_verdict.get("thought_process", "")
+                _reasoning = _reasoning or "—"
                 st.info(f"**Reasoning:** {_reasoning}")
 
                 _tags = _r.get("mitre_techniques", [])
@@ -1045,6 +1064,8 @@ with tab_live:
                 with st.expander("Audit Trail", expanded=False):
                     if _notes:
                         st.code("\n".join(_notes), language="bash")
+
+            st.divider()
 
         # Final Attack Chain — fetch LIVE từ /timeline (cùng nguồn với Batch Chain tab)
         if live_timeline:

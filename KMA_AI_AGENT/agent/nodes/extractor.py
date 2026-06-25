@@ -78,6 +78,21 @@ def node_extractor(state: SOCAgentState):
     }
     notes = ["Extractor: Bắt đầu quét IOC..."]
 
+    # --- 0. KIỂM TRA SOURCE IP NGAY TỪ ĐẦU ---
+    import ipaddress
+    _raw_source_ip = str(raw_log.get("source_ip", "")).strip()
+    _source_ip_valid = False
+    if _raw_source_ip:
+        try:
+            ipaddress.ip_address(_raw_source_ip)
+            _source_ip_valid = True
+        except ValueError:
+            extracted_ioc["attack_indicators"].append("log_injection")
+            notes.append(
+                f"Extractor [CẢNH BÁO ĐỎ]: source_ip='{_raw_source_ip}' KHÔNG PHẢI IPv4 hợp lệ — "
+                f"khả năng Log Injection/Tampering! Không thể thực thi SOAR action trên IP này."
+            )
+
     # --- 1. THỢ SĂN IP (Regex IPv4 chuẩn hóa) ---
     ip_pattern = r'\b(?:(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\.){3}(?:25[0-5]|2[0-4][0-9]|1?[0-9]{1,2})\b'
     found_ips = re.findall(ip_pattern, decoded_log_str)
